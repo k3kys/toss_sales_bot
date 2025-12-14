@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>베지나이 관리자</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card { border: none; shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .status-badge { font-size: 0.8em; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark bg-success mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#"><i class="bi bi-robot"></i> 베지나이 v1.0</a>
+            <span class="text-white">관리자 모드</span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card p-3">
+                    <h4>🥦 매장 관리 현황</h4>
+                    <p class="text-muted mb-0">총 등록 매장: <strong id="userCount">{{ users|length }}</strong>곳</p>
+                </div>
+            </div>
+            <div class="col-md-4 text-end d-flex align-items-center justify-content-end gap-2">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" onclick="resetForm()">
+                    <i class="bi bi-plus-lg"></i> 매장 등록
+                </button>
+                <button class="btn btn-warning text-white" onclick="sendManualReport()">
+                    <i class="bi bi-send-fill"></i> 리포트 강제 발송
+                </button>
+            </div>
+        </div>
+
+        <div class="card p-4 shadow-sm bg-white rounded">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>매장명</th>
+                        <th>전화번호</th>
+                        <th>플랜</th>
+                        <th>만료일</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td class="fw-bold">{{ user.username }}</td>
+                        <td>{{ user.phone_number }}</td>
+                        <td>
+                            <span class="badge bg-info text-dark">{{ user.plan_type }}</span>
+                        </td>
+                        <td>{{ user.expiration_date.strftime('%Y-%m-%d') if user.expiration_date else '-' }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-secondary" 
+                                onclick="editUser('{{ user.id }}', '{{ user.username }}', '{{ user.phone_number }}', '{{ user.plan_type }}')">
+                                수정
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('{{ user.id }}')">
+                                삭제
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="userModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">매장 등록</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editUserId">
+                    <div class="mb-3">
+                        <label class="form-label">매장명 (Username)</label>
+                        <input type="text" class="form-control" id="inputUsername">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">전화번호</label>
+                        <input type="text" class="form-control" id="inputPhone" placeholder="01012345678">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">토스 토큰</label>
+                        <input type="text" class="form-control" id="inputToken" value="dummy_token">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">구독 플랜</label>
+                        <select class="form-select" id="inputPlan">
+                            <option value="TRIAL">체험판 (7일)</option>
+                            <option value="3M">3개월</option>
+                            <option value="6M">6개월</option>
+                            <option value="1Y">1년</option>
+                            <option value="2Y">2년</option>
+                            <option value="UNLIMITED">무제한</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-success" onclick="saveUser()">저장하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 폼 초기화
+        function resetForm() {
+            document.getElementById('editUserId').value = '';
+            document.getElementById('inputUsername').value = '';
+            document.getElementById('inputPhone').value = '';
+            document.getElementById('inputUsername').disabled = false; // 등록할 땐 이름 수정 가능
+            document.getElementById('modalTitle').innerText = "신규 매장 등록";
+        }
+
+        // 수정 버튼 클릭 시
+        function editUser(id, name, phone, plan) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('inputUsername').value = name;
+            document.getElementById('inputUsername').disabled = true; // 수정할 땐 이름 변경 불가 (식별자라)
+            document.getElementById('inputPhone').value = phone;
+            document.getElementById('inputPlan').value = plan;
+            
+            document.getElementById('modalTitle').innerText = "매장 정보 수정";
+            
+            const modal = new bootstrap.Modal(document.getElementById('userModal'));
+            modal.show();
+        }
+
+        // 저장 (등록/수정 분기)
+        async function saveUser() {
+            const id = document.getElementById('editUserId').value;
+            const username = document.getElementById('inputUsername').value;
+            const phone = document.getElementById('inputPhone').value;
+            const token = document.getElementById('inputToken').value;
+            const plan = document.getElementById('inputPlan').value;
+
+            let url = "/users/";
+            let method = "POST";
+            let body = {
+                username: username,
+                phone_number: phone,
+                toss_token: token,
+                plan_type: plan
+            };
+
+            // ID가 있으면 수정 모드 (PUT)
+            if (id) {
+                url = `/users/${id}`;
+                method = "PUT";
+                // 수정 시 username은 보내지 않음 (스키마 참조)
+                delete body.username; 
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+
+                if (response.ok) {
+                    alert("저장되었습니다!");
+                    location.reload(); // 새로고침
+                } else {
+                    const err = await response.json();
+                    alert("오류: " + err.detail);
+                }
+            } catch (e) {
+                alert("통신 오류 발생");
+            }
+        }
+
+        // 삭제
+        async function deleteUser(id) {
+            if (!confirm("정말 이 매장 정보를 삭제하시겠습니까?")) return;
+
+            try {
+                const response = await fetch(`/users/${id}`, { method: "DELETE" });
+                if (response.ok) {
+                    alert("삭제되었습니다.");
+                    location.reload();
+                } else {
+                    alert("삭제 실패");
+                }
+            } catch (e) {
+                alert("오류 발생");
+            }
+        }
+
+        // 수동 리포트 발송
+        async function sendManualReport() {
+            if (!confirm("전체 매장에 일일 리포트를 지금 즉시 발송하시겠습니까?")) return;
+            
+            try {
+                const response = await fetch('/system/report', { method: "POST" });
+                if (response.ok) {
+                    alert("발송 요청이 완료되었습니다! 핸드폰을 확인하세요.");
+                } else {
+                    alert("발송 실패");
+                }
+            } catch (e) {
+                alert("통신 오류");
+            }
+        }
+    </script>
+</body>
+</html>

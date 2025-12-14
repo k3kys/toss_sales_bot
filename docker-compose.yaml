@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: toss_sales_bot
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # [중요] 로컬의 .env 파일을 컨테이너 안으로 연결
+      - ./.env:/app/.env
+      # [중요] DB 파일이 날아가지 않게 로컬 파일과 연결 (영속성)
+      - ./sales_bot.db:/app/sales_bot.db
+    environment:
+      - TZ=Asia/Seoul
+    restart: always

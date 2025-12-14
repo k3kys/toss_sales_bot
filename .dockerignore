@@ -1,0 +1,9 @@
+__pycache__
+*.pyc
+.env
+.git
+.pytest_cache
+venv/
+backups/
+# DB 파일은 로컬에서 마운트(연결)해서 쓸 거라 이미지엔 넣지 않습니다.
+sales_bot.db
