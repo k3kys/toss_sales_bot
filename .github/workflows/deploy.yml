@@ -36,8 +36,8 @@ jobs:
 
           # 4. Docker 컨테이너 재시작 (기존 것 끄고 -> 새로 빌드해서 켜기)
           # (sudo가 필요할 수 있어 앞에 붙임)
-          sudo docker compose down
-          sudo docker compose up -d --build
+          docker compose down
+          docker compose up -d --build
           
           # 5. 청소 (쓰지 않는 구버전 이미지 삭제)
-          sudo docker image prune -f
+          docker image prune -f
