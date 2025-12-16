@@ -1,8 +1,5 @@
 name: Toss Sales Bot CI/CD Pipeline
 
-# [트리거 조건]
-# 1. main 브랜치로 PR이 왔을 때 (빌드 테스트만 수행)
-# 2. main 브랜치에 코드가 병합(Push)되었을 때 (빌드 테스트 후 -> 배포 수행)
 on:
   push:
     branches: [ "main" ]
@@ -10,38 +7,32 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # ====================================================
-  # [1단계] 빌드 및 테스트 (검증 단계)
-  # ====================================================
+  # [1단계] 빌드 검증
   build-test:
     name: Build Verification
     runs-on: ubuntu-latest
     steps:
-      # 1. 코드 내려받기
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. 보안 파일(.env) 더미 생성 (빌드 에러 방지용)
       - name: Create dummy .env file
         run: |
-          echo "TOSS_SECRET_KEY=dummy" >> .env
+          echo "TOSS_API_KEY=dummy" >> .env
+          echo "DATABASE_URL=sqlite:///./dummy.db" >> .env
           echo "SOLAPI_API_KEY=dummy" >> .env
           echo "SOLAPI_API_SECRET=dummy" >> .env
           echo "SENDER_PHONE=01000000000" >> .env
           echo "MANAGER_PHONE=01000000000" >> .env
           echo "TZ=Asia/Seoul" >> .env
 
-      # 3. 도커 빌드 테스트 (여기서 실패하면 배포로 넘어가지 않음)
       - name: Test Docker Build
         run: docker compose build
 
-  # ====================================================
-  # [2단계] 서버 배포 (실행 단계)
-  # ====================================================
+  # [2단계] 서버 배포
   deploy:
     name: Deploy to GCP
-    needs: build-test  # 중요: 위 'build-test'가 성공해야만 실행됨!
-    if: github.event_name == 'push' # PR일 때는 배포하지 않고, Push일 때만 배포함
+    needs: build-test
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
@@ -53,27 +44,25 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: 22
           script: |
-            # 1. 프로젝트 폴더로 이동
             mkdir -p ~/toss_sales_bot
             cd ~/toss_sales_bot
 
-            # 2. 깃허브에서 최신 코드 가져오기
             if [ ! -d ".git" ]; then
               git clone https://github.com/${{ github.repository }} .
             fi
             git fetch origin main
             git reset --hard origin/main
 
-            # 3. .env 파일 생성 (Secrets 사용)
-            echo "TOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }}" > .env
+            # [핵심 수정] 파이썬 코드가 원하는 이름으로 매핑하여 저장
+            echo "TOSS_API_KEY=${{ secrets.TOSS_SECRET_KEY }}" > .env
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+            
+            # 나머지 변수들
             echo "SOLAPI_API_KEY=${{ secrets.SOLAPI_API_KEY }}" >> .env
             echo "SOLAPI_API_SECRET=${{ secrets.SOLAPI_API_SECRET }}" >> .env
             echo "SENDER_PHONE=${{ secrets.SENDER_PHONE }}" >> .env
             echo "MANAGER_PHONE=${{ secrets.MANAGER_PHONE }}" >> .env
 
-            # 4. Docker 재시작 (sudo 제거됨)
             docker compose down
             docker compose up -d --build
-            
-            # 5. 청소
             docker image prune -f
